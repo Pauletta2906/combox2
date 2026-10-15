@@ -1,50 +1,49 @@
 <?php
-//local connection
-$local_host       = "localhost";
-$local_port       = "5432";
-$local_user       = "postgres";
-$local_dbname     = "combox";
-$local_password   = "unicesmag";
-//local connection
+
+require('config/database.php');
+
+$f_name = $_POST['fname'];
+$l_name = $_POST['lname'];
+$m_phone = $_POST['mphone'];
+$e_email = $_POST['email'];
+$p_assword = $_POST['pswd'];
+$pss_enc   = md5($p_assword);
 
 
-//supa conecction
-$supa_host     = "aws-0-ca-central-1.pooler.supabase.com";
-$supa_port     = "6543";
-$supa_user     = "postgres.wgtmiojqpplblcevumhe";
-$supa_dbname   = "postgres";
-$supa_password = "unicesmag@@";
+$sql = "
+INSERT INTO users (
+    firstname,
+    lastname,
+    mobile_phone,
+    email,
+    password
+)
+VALUES (
+    '$f_name',
+    '$l_name',
+    '$m_phone',
+    '$e_email',
+    '$pss_enc'
+)
+";
 
+$local_res = pg_query($local_conn, $sql);
+$supa_res = pg_query($supa_conn, $sql);
 
-
-$local_conn =pg_connect("
-host=$local_host
-port=$local_port  
-user=$local_user 
-dbname=$local_dbname 
-password=$local_password 
-");
-
-$supa_conn =pg_connect("
-host=$supa_host
-port=$supa_port  
-user=$supa_user 
-dbname=$supa_dbname 
-password=$supa_password 
-");
-
-if (!$local_conn){
-    die("local connection error connection.");
-
-} else{
-    echo"<br>local connection success!!!";
+if ($local_res) {
+    echo "User has been created successfully into local database!!!<br>";
+} else {
+    echo "User hasn't been created into local database!!!<br>";
 }
 
-if (!$supa_conn){
-    die("supa  error connection.");
-
-} else{
-    echo"<br>supa connection success!!!";
+if ($supa_res) {
+    echo "User has been created successfully into Supabase!!!";
+} else {
+    echo "User hasn't been created into Supabase!!!";
 }
+
+echo "<script>alert('user has been created successfully :::')</script>";
+header('refresh:0;url=signin.html');
+
 
 ?>
