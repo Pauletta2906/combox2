@@ -1,23 +1,22 @@
 
 <?php
-
 session_start();
 
-require_once __DIR__ . '/config/supabase.php';
+$url = 'https://wgtmiojqpplblcevumhe.supabase.co/auth/v1/token?grant_type=password';
+$key = 'TU_CLAVE_PUBLICABLE';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    exit('Método no permitido');
+    header('Location: login.html');
+    exit();
 }
 
 $email = trim($_POST['email'] ?? '');
 $password = $_POST['password'] ?? '';
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
-    exit('Ingresa un correo válido y una contraseña.');
+if ($email === '' || $password === '') {
+    header('Location: login.html?error=1');
+    exit();
 }
-
-$url = rtrim(SUPABASE_URL, '/') . '/auth/v1/token?grant_type=password';
 
 $data = json_encode([
     'email' => $email,
@@ -32,34 +31,42 @@ curl_setopt_array($ch, [
     CURLOPT_POSTFIELDS => $data,
     CURLOPT_HTTPHEADER => [
         'Content-Type: application/json',
-        'apikey: ' . SUPABASE_KEY
+        'apikey: ' . $key
     ],
-    CURLOPT_TIMEOUT => 15
+    CURLOPT_TIMEOUT => 20
 ]);
 
 $response = curl_exec($ch);
 $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$error = curl_error($ch);
+
+if ($response === false) {
+    error_log('Error cURL: ' . curl_error($ch));
+    curl_close($ch);
+
+    header('Location: login.html?error=conexion');
+    exit();
+}
 
 curl_close($ch);
 
-if ($response === false) {
-    http_response_code(502);
-    exit('No fue posible conectar con Supabase.');
-}
-
 $result = json_decode($response, true);
 
-if ($status === 200 && isset($result['access_token'], $result['user']['id'])) {
+if (
+    $status === 200 &&
+    isset($result['access_token']) &&
+    isset($result['user']['id'])
+) {
     session_regenerate_id(true);
 
     $_SESSION['supabase_access_token'] = $result['access_token'];
     $_SESSION['supabase_user_id'] = $result['user']['id'];
-    $_SESSION['supabase_email'] = $result['user']['email'] ?? $email;
 
-    header('Location: index.html');
-    exit;
+    header('Location: index.php');
+    exit();
 }
 
-http_response_code(401);
-exit('Correo o contraseña incorrectos.');
+// Registrar el error real para revisarlo en PHP
+error_log('Supabase login error HTTP ' . $status . ': ' . $response);
+
+header('Location: login.html?error=1');
+exit();
